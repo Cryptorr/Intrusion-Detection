@@ -3,16 +3,12 @@ import numpy as np
 import sklearn as sk
 from sklearn import preprocessing
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.feature_extraction import DictVectorizer
 
 header = pd.read_table("kddcup.names.txt", header=None)
 att_types = pd.read_table("training_attack_types.txt", sep=" ", header=None)
 
 tr_raw = pd.read_csv("kddcup.data_10_percent_corrected", header=None)
 test_raw = pd.read_csv("kddcup_testdata.corrected", header=None)
-
-vectorizer = DictVectorizer(sparse=False)
-
 
 def preprocess(dat):
     dat.columns = header[0]
