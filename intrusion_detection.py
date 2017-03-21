@@ -3,12 +3,16 @@ import numpy as np
 import sklearn as sk
 from sklearn import preprocessing
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.feature_extraction import DictVectorizer
 
 header = pd.read_table("kddcup.names.txt", header=None)
 att_types = pd.read_table("training_attack_types.txt", sep=" ", header=None)
 
 tr_raw = pd.read_csv("kddcup.data_10_percent_corrected", header=None)
 test_raw = pd.read_csv("kddcup_testdata.corrected", header=None)
+
+vectorizer = DictVectorizer(sparse=False)
+
 
 def preprocess(dat):
     dat.columns = header[0]
@@ -19,28 +23,26 @@ def preprocess(dat):
     dat.type = dat.type.fillna("unlisted")
     dat.attack = dat.attack.astype('category')
 
-    #scale
-    nums = dat[dat.select_dtypes(include=['number']).columns]
-    nums = pd.DataFrame(preprocessing.scale(nums))
-    dat[dat.select_dtypes(include=['number']).columns] = nums
+    dat[dat.select_dtypes(include=['number']).columns] = preprocessing.scale(
+        dat[dat.select_dtypes(include=['number']).columns])
+    dat = pd.get_dummies(dat, columns=['protocol_type', 'service', 'flag'])
+
     return dat
+
 
 tr = preprocess(tr_raw)
 test = preprocess(test_raw)  # actual test data (but labeled--don't cheat!)
 
-tr["dos_attack"] = np.where(tr.type == "dos",1,0)
-tr["probe_attack"] = np.where(tr.type == "probe",1,0)
-tr["r21_attack"] = np.where(tr.type == "r2l",1,0)
-tr["u2r_attack"] = np.where(tr.type == "u2r",1,0)
+# not occurring in training set but occuring in test set so we just add it
+tr['service_icmp'] = 0
+test['service_red_i'] = 0
+test['service_urh_i'] = 0
 
-columns = ["duration", "src_bytes", "dst_bytes", "num_failed_logins", "su_attempted",
-            "root_shell", "num_file_creations", "count", "serror_rate"]
+tr_labels = tr["type"].values
+tr_features = tr.drop(["type", "attack"], axis=1).values
 
-tr_labels = tr["attack"].values
-tr_features = tr[list(columns)].values
-
-test_labels = test["attack"].values
-test_features = test[list(columns)].values
+test_labels = test["type"].values
+test_features = test.drop(["type", "attack"], axis=1).values
 
 clf = RandomForestClassifier(n_estimators=10, max_depth=None, min_samples_split=2, random_state=0)
 clf.fit(tr_features, tr_labels)
